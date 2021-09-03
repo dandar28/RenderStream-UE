@@ -55,6 +55,8 @@
 
 #include "RSUCHelpers.inl"
 
+#include "RenderStreamLightSubsystem.h"
+
 DEFINE_LOG_CATEGORY(LogRenderStream);
 
 #define LOCTEXT_NAMESPACE "FRenderStreamModule"
@@ -347,6 +349,17 @@ bool FRenderStreamModule::PopulateStreamPool()
 
 void FRenderStreamModule::ApplyCameras(const RenderStreamLink::FrameData& frameData)
 {
+    check(m_World);
+    if (URenderStreamLightSubsystem* LightSubsystem = UWorld::GetSubsystem<URenderStreamLightSubsystem>(m_World))
+    {
+        for (auto light : frameData.lights)
+        {
+            UE_LOG(LogTemp, Log, TEXT("rx: %f, ry: %f, rz: %f"),
+                light.rx, light.ry, light.rz);
+        }
+        LightSubsystem->UpdateLights(frameData.lights);
+    }
+
     for (const TSharedPtr<FRenderStreamProjectionPolicy>& policy : ProjectionPolicyFactory->GetPolicies())
     {
         const TSharedPtr<FFrameStream> stream = StreamPool->GetStream(policy->GetViewportId());

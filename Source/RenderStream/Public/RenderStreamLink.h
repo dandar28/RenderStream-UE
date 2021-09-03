@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <memory>
+#include <vector>
 
 struct ID3D11Device;
 struct ID3D12Device;
@@ -119,6 +120,15 @@ public:
 
     typedef struct
     {
+        float strength;
+        float r, g, b;
+        float rx, ry, rz;
+        float x, y, z;
+
+    } RSLightData;
+
+    typedef struct
+    {
         double tTracked;
         double localTime;
         double localTimeDelta;
@@ -126,6 +136,7 @@ public:
         unsigned int frameRateDenominator;
         uint32_t flags;
         uint32_t scene;
+        std::vector<RSLightData> lights;
     } FrameData;
 
     typedef struct
@@ -276,6 +287,8 @@ public:
         const char* name;
         float value;
     } ProfilingEntry;
+
+    
 
 #pragma pack(pop)
 
