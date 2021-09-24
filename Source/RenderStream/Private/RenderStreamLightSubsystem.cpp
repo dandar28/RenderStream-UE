@@ -37,7 +37,6 @@ void URenderStreamLightSubsystem::UpdateLights(const std::vector<RenderStreamLin
     {
         auto ld = LightData[i];
         auto Light = Lights[i];
-        auto LightRootComponent = Light->GetRootComponent();
 
         float _pitch = ld.rx;
         float _yaw = ld.ry;
@@ -51,7 +50,6 @@ void URenderStreamLightSubsystem::UpdateLights(const std::vector<RenderStreamLin
         pos.Z = FUnitConversion::Convert(float(ld.y), EUnit::Meters, FRenderStreamModule::distanceUnit());
         Light->SetActorLocation(pos);
 
-
         Lights[i]->GetLightComponent()->SetVisibility(true);
         Lights[i]->SetBrightness(LightData[i].strength);
     }
@@ -59,7 +57,6 @@ void URenderStreamLightSubsystem::UpdateLights(const std::vector<RenderStreamLin
     {
         Lights[i]->GetLightComponent()->SetVisibility(false);
     }
-
 }
 
 bool URenderStreamLightSubsystem::DoesSupportWorldType(EWorldType::Type WorldType) const
