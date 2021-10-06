@@ -126,6 +126,19 @@ public:
         float x, y, z;
 
     } RSLightData;
+    
+    typedef struct
+    {
+        float x;
+        float y;
+        float z;
+    } MeshVertex;
+
+    typedef struct
+    {
+        std::vector<MeshVertex> vertices;
+        std::vector<uint64_t> triangles;
+    } MeshReconstruction;
 
     typedef struct
     {
@@ -137,6 +150,7 @@ public:
         uint32_t flags;
         uint32_t scene;
         std::vector<RSLightData> lights;
+        MeshReconstruction meshReconstruction;
     } FrameData;
 
     typedef struct
@@ -144,7 +158,7 @@ public:
         double tTracked;
         CameraData camera;
         EnhancedCaptureFrameType enhancedCaptureType;
-        PredictedFrameType predictedFrameType;
+        //PredictedFrameType predictedFrameType;
     } CameraResponseData;
 
     typedef struct
