@@ -116,7 +116,7 @@ URenderStreamChannelDefinition::URenderStreamChannelDefinition()
 {
     MeshReconstruction = CreateDefaultSubobject<UProceduralMeshComponent>("MeshReconstruction");
     MeshReconstruction->bUseAsyncCooking = true;
-    Hidden.Add(MeshReconstruction);
+    //Hidden.Add(MeshReconstruction);
 }
 
 void URenderStreamChannelDefinition::ResetDefaultVisibility(AActor* Actor)

@@ -221,7 +221,9 @@ void FRenderStreamProjectionPolicy::ApplyCameraData(const RenderStreamLink::Fram
             FVector vert;
             for (auto& meshVertex : frameData.meshReconstruction.vertices)
             {
-                vert = FVector(meshVertex.x, meshVertex.y, meshVertex.z);
+                vert.X = FUnitConversion::Convert(float(meshVertex.z), EUnit::Meters, FRenderStreamModule::distanceUnit());
+                vert.Y = FUnitConversion::Convert(float(meshVertex.x), EUnit::Meters, FRenderStreamModule::distanceUnit());
+                vert.Z = FUnitConversion::Convert(float(meshVertex.y), EUnit::Meters, FRenderStreamModule::distanceUnit());
 
                 channelDef->MeshVertices.Add(vert);
 
@@ -238,7 +240,7 @@ void FRenderStreamProjectionPolicy::ApplyCameraData(const RenderStreamLink::Fram
                 {
                     channelDef->MeshTriangles.Add(meshTriangle);
                 }
-
+                //channelDef->MeshReconstruction->SetRelativeLocation()
                 channelDef->MeshReconstruction->CreateMeshSection_LinearColor(0, channelDef->MeshVertices, channelDef->MeshTriangles, TArray<FVector>(), TArray<FVector2D>(), TArray<FLinearColor>(), TArray<FProcMeshTangent>(), true);
                 
                 //channelDef->MeshReconstruction->SetRelativeLocationAndRotation(-channelDef->MeshVertices[0], FRotator());
