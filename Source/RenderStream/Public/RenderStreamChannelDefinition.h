@@ -31,9 +31,23 @@ public:
         UProceduralMeshComponent* MeshReconstruction;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
+        UMaterialInstance* MeshReconstructionMaterial;
+
+    UMaterialInstanceDynamic* DynamicMeshMaterial;
+
+    UPROPERTY(VisibleAnywhere)
+        FTransform DummyLocation;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
         UStaticMesh* DebugShape;
 
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+        bool HideReconstruction;
+
     TArray<AStaticMeshActor*> DebugMeshes;
+
+    float tm = 0;
+    float tmSecFrac = 0.5f;
 
     UFUNCTION()
         void SpawnDebugMesh(FVector location)
@@ -59,6 +73,8 @@ public:
         MeshTriangles.Add(v2);
         MeshTriangles.Add(v3);
     }
+
+    void CreateProceduralCube(FVector ext);
 
     UPROPERTY(EditAnywhere, interp, Category = Visibility, DisplayName = "Force Visible")
     TSet<TSoftObjectPtr<AActor>> Visible;
@@ -95,6 +111,7 @@ protected:
 
     virtual void BeginPlay() override;
     virtual void EndPlay(const EEndPlayReason::Type Reason) override;
+    virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
 private:
     static TMap<FString, TSharedPtr<TArray<TWeakObjectPtr<ACameraActor>>>> ChannelActorMap;

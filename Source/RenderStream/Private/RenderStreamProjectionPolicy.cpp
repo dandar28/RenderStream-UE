@@ -208,46 +208,60 @@ void FRenderStreamProjectionPolicy::ApplyCameraData(const RenderStreamLink::Fram
 
     if (frameData.meshReconstruction.vertices.size())
     {
+        
         if (URenderStreamChannelDefinition* channelDef = Camera->FindComponentByClass<URenderStreamChannelDefinition>())
         {
-            //update the shape and windings
-            //channelDef->MeshReconstruction->UpdateMeshSection(0, channelDef->MeshVertices, TArray<FVector>(), TArray<FVector2D>(), TArray<FColor>(), TArray<FProcMeshTangent>());
-
-            //more likely, reconstruct the whole mesh
-            channelDef->DebugMeshes.Empty();
-            channelDef->MeshVertices.Empty();
-            channelDef->MeshTriangles.Empty();
-
-            FVector vert;
-            for (auto& meshVertex : frameData.meshReconstruction.vertices)
+            if (channelDef->tm + channelDef->tmSecFrac < UGameplayStatics::GetTimeSeconds(channelDef->GetWorld()))
             {
-                vert.X = FUnitConversion::Convert(float(meshVertex.z), EUnit::Meters, FRenderStreamModule::distanceUnit());
-                vert.Y = FUnitConversion::Convert(float(meshVertex.x), EUnit::Meters, FRenderStreamModule::distanceUnit());
-                vert.Z = FUnitConversion::Convert(float(meshVertex.y), EUnit::Meters, FRenderStreamModule::distanceUnit());
+                channelDef->tm = UGameplayStatics::GetTimeSeconds(channelDef->GetWorld());
 
-                channelDef->MeshVertices.Add(vert);
+                    //update the shape and windings
+                //channelDef->MeshReconstruction->UpdateMeshSection(0, channelDef->MeshVertices, TArray<FVector>(), TArray<FVector2D>(), TArray<FColor>(), TArray<FProcMeshTangent>());
 
-                //debug shape on each vertex
-                //DrawDebugSphere(GEngine->GetWorld(), vert, 2.0f, 32, FColor::Blue);
-                //try spawning a cube on it for now
-                //channelDef->SpawnDebugMesh(vert);
-            }
+                //more likely, reconstruct the whole mesh
+                    channelDef->DebugMeshes.Empty();
+                    channelDef->MeshVertices.Empty();
+                    channelDef->MeshTriangles.Empty();
 
-            if (frameData.meshReconstruction.triangles.size())
-            {
-
-                for (auto& meshTriangle : frameData.meshReconstruction.triangles)
+                    FVector vert;
+                for (auto& meshVertex : frameData.meshReconstruction.vertices)
                 {
-                    channelDef->MeshTriangles.Add(meshTriangle);
-                }
-                //channelDef->MeshReconstruction->SetRelativeLocation()
-                channelDef->MeshReconstruction->CreateMeshSection_LinearColor(0, channelDef->MeshVertices, channelDef->MeshTriangles, TArray<FVector>(), TArray<FVector2D>(), TArray<FLinearColor>(), TArray<FProcMeshTangent>(), true);
-                
-                //channelDef->MeshReconstruction->SetRelativeLocationAndRotation(-channelDef->MeshVertices[0], FRotator());
+                    vert.X = FUnitConversion::Convert(float(meshVertex.z), EUnit::Meters, FRenderStreamModule::distanceUnit());
+                    vert.Y = FUnitConversion::Convert(float(meshVertex.x), EUnit::Meters, FRenderStreamModule::distanceUnit());
+                    vert.Z = FUnitConversion::Convert(float(meshVertex.y), EUnit::Meters, FRenderStreamModule::distanceUnit());
 
+                    channelDef->MeshVertices.Add(vert);
+
+                    //debug shape on each vertex
+                    //DrawDebugSphere(GEngine->GetWorld(), vert, 2.0f, 32, FColor::Blue);
+                    //try spawning a cube on it for now
+                    //channelDef->SpawnDebugMesh(vert);
+                }
+
+                if (frameData.meshReconstruction.triangles.size())
+                {
+
+                    for (auto& meshTriangle : frameData.meshReconstruction.triangles)
+                    {
+                        channelDef->MeshTriangles.Add(meshTriangle);
+                    }
+
+                    channelDef->MeshReconstruction->SetWorldLocation(channelDef->DummyLocation.GetLocation());
+
+                    channelDef->MeshReconstruction->CreateMeshSection_LinearColor(0, channelDef->MeshVertices, channelDef->MeshTriangles, TArray<FVector>(), TArray<FVector2D>(), TArray<FLinearColor>(), TArray<FProcMeshTangent>(), true);
+
+                    if (!channelDef->DynamicMeshMaterial) channelDef->DynamicMeshMaterial = UMaterialInstanceDynamic::Create(channelDef->MeshReconstructionMaterial, channelDef);
+
+                    channelDef->MeshReconstruction->SetMaterial(0, channelDef->DynamicMeshMaterial);
+
+                    //channelDef->MeshReconstruction->SetRelativeLocationAndRotation(-channelDef->MeshVertices[0], FRotator());
+
+                    channelDef->SetVisibility(channelDef->MeshReconstruction->GetOwner(), !channelDef->HideReconstruction);
+                }
             }
         }
     }
+
 }
 
 void FRenderStreamProjectionPolicy::EndScene()

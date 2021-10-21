@@ -114,8 +114,20 @@ URenderStreamChannelDefinition::URenderStreamChannelDefinition()
     , ShowFlags(EShowFlagInitMode::ESFIM_Game)
     , Registered(false)
 {
+    PrimaryComponentTick.bCanEverTick = true;
+
+    DynamicMeshMaterial = nullptr;
     MeshReconstruction = CreateDefaultSubobject<UProceduralMeshComponent>("MeshReconstruction");
     MeshReconstruction->bUseAsyncCooking = true;
+    //MeshReconstruction->ContainsPhysicsTriMeshData(true);
+//    MeshReconstruction->bUseComplexAsSimpleCollision = false;
+
+    MeshReconstruction->SetMobility(EComponentMobility::Movable);
+    MeshReconstruction->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+    //MeshReconstruction->SetCollisionObjectType(ECollisionChannel::ECC_PhysicsBody);
+    //MeshReconstruction->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Block);
+    //MeshReconstruction->GetOwner()->SetActorEnableCollision(true);
+
     //Hidden.Add(MeshReconstruction);
 }
 
@@ -229,6 +241,18 @@ void URenderStreamChannelDefinition::BeginPlay()
         auto& Array = FindOrAdd(ChannelActorMap, Owner->GetName());
         Array.Add(Owner);
         Registered = true;
+
+        TArray<AActor*> ChildActors;
+        Owner->GetAttachedActors(ChildActors);
+        for (AActor* actor : ChildActors)
+        {
+            if (actor->GetName() == FString(TEXT("DummyLocation")))
+            {
+                DummyLocation = actor->GetTransform();
+            }
+        }
+
+
     }
     else
     {
@@ -236,45 +260,71 @@ void URenderStreamChannelDefinition::BeginPlay()
     }
 
     ////debug whatever bullshit
-    //MeshVertices.Add(FVector(0, -100, 0)); //lower left - 0
-    //MeshVertices.Add(FVector(0, -100, 100)); //upper left - 1
-    //MeshVertices.Add(FVector(0, 100, 0)); //lower right - 2 
-    //MeshVertices.Add(FVector(0, 100, 100)); //upper right - 3
+    //CreateProceduralCube(FVector(100, 100, 100));
 
-    //MeshVertices.Add(FVector(100, -100, 0)); //lower front left - 4
-    //MeshVertices.Add(FVector(100, -100, 100)); //upper front left - 5
-
-    //MeshVertices.Add(FVector(100, 100, 100)); //upper front right - 6
-    //MeshVertices.Add(FVector(100, 100, 0)); //lower front right - 7
-
-    ////Back face of cube
-    //AddTriangleByIndex(0, 2, 3);
-    //AddTriangleByIndex(3, 1, 0);
-
-    ////Left face of cube
-    //AddTriangleByIndex(0, 1, 4);
-    //AddTriangleByIndex(4, 1, 5);
-
-    ////Front face of cube
-    //AddTriangleByIndex(4, 5, 7);
-    //AddTriangleByIndex(7, 5, 6);
-
-    ////Right face of cube
-    //AddTriangleByIndex(7, 6, 3);
-    //AddTriangleByIndex(3, 2, 7);
-
-    ////Top face
-    //AddTriangleByIndex(1, 3, 5);
-    //AddTriangleByIndex(6, 5, 3);
-
-    ////bottom face
-    //AddTriangleByIndex(2, 0, 4);
-    //AddTriangleByIndex(4, 7, 2);
-
-    //TArray<FLinearColor> VertexColors;
-
-    //MeshReconstruction->CreateMeshSection_LinearColor(0, MeshVertices, MeshTriangles, TArray<FVector>(), TArray<FVector2D>(), VertexColors, TArray<FProcMeshTangent>(), true);
+    MeshReconstruction->SetWorldTransform(DummyLocation);
 }
+
+void URenderStreamChannelDefinition::CreateProceduralCube(FVector ext)
+{
+    MeshVertices.Empty();
+    MeshTriangles.Empty();
+
+    MeshVertices.Add(FVector(0, -ext.Y, 0)); //lower left - 0
+    MeshVertices.Add(FVector(0, -ext.Y, ext.Z)); //upper left - 1
+    MeshVertices.Add(FVector(0, -ext.Y, 0)); //lower right - 2 
+    MeshVertices.Add(FVector(0, -ext.Y, ext.Z)); //upper right - 3
+
+    MeshVertices.Add(FVector(ext.X, -ext.Y, 0)); //lower front left - 4
+    MeshVertices.Add(FVector(ext.X, -ext.Y, ext.Z)); //upper front left - 5
+
+    MeshVertices.Add(FVector(ext.X, ext.Y, ext.Z)); //upper front right - 6
+    MeshVertices.Add(FVector(ext.X, ext.Y, 0)); //lower front right - 7
+
+    //Back face of cube
+    AddTriangleByIndex(0, 2, 3);
+    AddTriangleByIndex(3, 1, 0);
+
+    //Left face of cube
+    AddTriangleByIndex(0, 1, 4);
+    AddTriangleByIndex(4, 1, 5);
+
+    //Front face of cube
+    AddTriangleByIndex(4, 5, 7);
+    AddTriangleByIndex(7, 5, 6);
+
+    //Right face of cube
+    AddTriangleByIndex(7, 6, 3);
+    AddTriangleByIndex(3, 2, 7);
+
+    //Top face
+    AddTriangleByIndex(1, 3, 5);
+    AddTriangleByIndex(6, 5, 3);
+
+    //bottom face
+    AddTriangleByIndex(2, 0, 4);
+    AddTriangleByIndex(4, 7, 2);
+
+    TArray<FLinearColor> VertexColors;
+
+    MeshReconstruction->CreateMeshSection_LinearColor(0, MeshVertices, MeshTriangles, TArray<FVector>(), TArray<FVector2D>(), VertexColors, TArray<FProcMeshTangent>(), true);
+}
+
+void URenderStreamChannelDefinition::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+{
+    Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+    //if (angle >= 360) angle = 0;
+
+    //CreateProceduralCube(FVector(100.0f, sin(angle) * 100.0f, cos(angle) * 100.0f));
+
+    //if (tm + 0.1f < UGameplayStatics::GetTimeSeconds(GetWorld()))
+    //{
+    //    tm = UGameplayStatics::GetTimeSeconds(GetWorld());
+    //    angle++;
+    //}
+}
+
 
 void URenderStreamChannelDefinition::EndPlay(const EEndPlayReason::Type Reason)
 {
