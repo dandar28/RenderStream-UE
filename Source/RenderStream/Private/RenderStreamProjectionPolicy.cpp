@@ -378,6 +378,12 @@ void FRenderStreamProjectionPolicy::SendEnhancedContent_RenderThread(FRHICommand
         m_frameResponses.pop_front();
     }
 
+    if (SrcTexture)
+    {
+        frameResponse.enhancedCaptureType = RenderStreamLink::EnhancedCaptureFrameType::RENDERED_FRAME;
+        Stream->SendFrame_RenderingThread(RHICmdList, frameResponse, SrcTexture, ViewportRect);
+    }
+
     if (DistortionTexture)
     {
         frameResponse.enhancedCaptureType = RenderStreamLink::EnhancedCaptureFrameType::DISTORTION;
@@ -401,11 +407,7 @@ void FRenderStreamProjectionPolicy::SendEnhancedContent_RenderThread(FRHICommand
         Stream->SendFrame_RenderingThread(RHICmdList, frameResponse, AlbedoTexture, ViewportRect);
     }
 
-    if (SrcTexture)
-    {
-        frameResponse.enhancedCaptureType = RenderStreamLink::EnhancedCaptureFrameType::RENDERED_FRAME;
-        Stream->SendFrame_RenderingThread(RHICmdList, frameResponse, SrcTexture, ViewportRect);
-    }
+   
 
 }
 

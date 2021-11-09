@@ -30,7 +30,7 @@ private:
     FString m_streamName;
     FString m_channel;
     RenderStreamLink::ProjectionClipping m_clipping;
-    FTextureRHIRef m_bufTexture;
+    TArray<FTextureRHIRef> m_bufTextures;
     FIntPoint m_resolution;
     RenderStreamLink::StreamHandle m_handle;
 };

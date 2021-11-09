@@ -133,66 +133,79 @@ namespace RSUCHelpers
         FVector2D CropU,
         FVector2D CropV)
     {
+        SCOPED_DRAW_EVENTF(RHICmdList, MediaCapture, TEXT("RS Send Frame"));
         // convert the source with a draw call
         FGraphicsPipelineStateInitializer GraphicsPSOInit;
         FRHITexture* RenderTarget = BufTexture.GetReference();
         FRHIRenderPassInfo RPInfo(RenderTarget, ERenderTargetActions::DontLoad_Store);
-        RHICmdList.BeginRenderPass(RPInfo, TEXT("MediaCapture"));
 
-        RHICmdList.ApplyCachedRenderTargets(GraphicsPSOInit);
-
-        GraphicsPSOInit.DepthStencilState = TStaticDepthStencilState<false, CF_Always>::GetRHI();
-        GraphicsPSOInit.RasterizerState = TStaticRasterizerState<>::GetRHI();
-        GraphicsPSOInit.BlendState = TStaticBlendStateWriteMask<CW_RGBA, CW_NONE, CW_NONE, CW_NONE, CW_NONE, CW_NONE, CW_NONE, CW_NONE>::GetRHI();
-        GraphicsPSOInit.PrimitiveType = PT_TriangleStrip;
-
-        // configure media shaders
-        auto ShaderMap = GetGlobalShaderMap(GMaxRHIFeatureLevel);
-        TShaderMapRef<FMediaShadersVS> VertexShader(ShaderMap);
-
-        GraphicsPSOInit.BoundShaderState.VertexDeclarationRHI = GMediaVertexDeclaration.VertexDeclarationRHI;
-        GraphicsPSOInit.BoundShaderState.VertexShaderRHI = VertexShader.GetVertexShader();
-
-        if (FrameData.enhancedCaptureType == RenderStreamLink::EnhancedCaptureFrameType::SCENE_DEPTH)
         {
-            TShaderMapRef<RSResizeDepthCopy> ConvertShader(ShaderMap);
-            GraphicsPSOInit.BoundShaderState.PixelShaderRHI = ConvertShader.GetPixelShader();
-            ConvertShader->SetParameters(RHICmdList, InSourceTexture, Point);
+            SCOPED_DRAW_EVENTF(RHICmdList, MediaCapture, TEXT("RS Blit"));
+            RHICmdList.BeginRenderPass(RPInfo, TEXT("MediaCapture"));
+
+            RHICmdList.Transition(FRHITransitionInfo(BufTexture, ERHIAccess::CopySrc | ERHIAccess::ResolveSrc, ERHIAccess::RTV));
+
+            RHICmdList.ApplyCachedRenderTargets(GraphicsPSOInit);
+
+            GraphicsPSOInit.DepthStencilState = TStaticDepthStencilState<false, CF_Always>::GetRHI();
+            GraphicsPSOInit.RasterizerState = TStaticRasterizerState<>::GetRHI();
+            GraphicsPSOInit.BlendState = TStaticBlendStateWriteMask<CW_RGBA, CW_NONE, CW_NONE, CW_NONE, CW_NONE, CW_NONE, CW_NONE, CW_NONE>::GetRHI();
+            GraphicsPSOInit.PrimitiveType = PT_TriangleStrip;
+
+            // configure media shaders
+            auto ShaderMap = GetGlobalShaderMap(GMaxRHIFeatureLevel);
+            TShaderMapRef<FMediaShadersVS> VertexShader(ShaderMap);
+
+            GraphicsPSOInit.BoundShaderState.VertexDeclarationRHI = GMediaVertexDeclaration.VertexDeclarationRHI;
+            GraphicsPSOInit.BoundShaderState.VertexShaderRHI = VertexShader.GetVertexShader();
+
+            if (FrameData.enhancedCaptureType == RenderStreamLink::EnhancedCaptureFrameType::SCENE_DEPTH)
+            {
+                TShaderMapRef<RSResizeDepthCopy> ConvertShader(ShaderMap);
+                GraphicsPSOInit.BoundShaderState.PixelShaderRHI = ConvertShader.GetPixelShader();
+                ConvertShader->SetParameters(RHICmdList, InSourceTexture, Point);
+            }
+            else
+            {
+                TShaderMapRef<RSResizeCopy> ConvertShader(ShaderMap);
+                GraphicsPSOInit.BoundShaderState.PixelShaderRHI = ConvertShader.GetPixelShader();
+                ConvertShader->SetParameters(RHICmdList, InSourceTexture, Point);
+            }
+
+
+            SetGraphicsPipelineState(RHICmdList, GraphicsPSOInit);
+            auto streamTexSize = BufTexture->GetTexture2D()->GetSizeXY();
+            
+            // draw full size quad into render target
+            float ULeft = CropU.X;
+            float URight = CropU.Y;
+            float VTop = CropV.X;
+            float VBottom = CropV.Y;
+            FVertexBufferRHIRef VertexBuffer = CreateTempMediaVertexBuffer(ULeft, URight, VTop, VBottom);
+            RHICmdList.SetStreamSource(0, VertexBuffer, 0);
+
+            // set viewport to RT size
+            RHICmdList.SetViewport(0, 0, 0.0f, streamTexSize.X, streamTexSize.Y, 1.0f);
+            RHICmdList.DrawPrimitive(0, 2, 1);
+            RHICmdList.Transition(FRHITransitionInfo(BufTexture, ERHIAccess::RTV, ERHIAccess::CopySrc | ERHIAccess::ResolveSrc));
+
+            RHICmdList.EndRenderPass();
+            //RHICmdList.SubmitCommandsAndFlushGPU();
         }
-        else
-        {
-            TShaderMapRef<RSResizeCopy> ConvertShader(ShaderMap);
-            GraphicsPSOInit.BoundShaderState.PixelShaderRHI = ConvertShader.GetPixelShader();
-            ConvertShader->SetParameters(RHICmdList, InSourceTexture, Point);
-        }
 
-        SetGraphicsPipelineState(RHICmdList, GraphicsPSOInit);
-        auto streamTexSize = BufTexture->GetTexture2D()->GetSizeXY();
-
-        // draw full size quad into render target
-        float ULeft = CropU.X;
-        float URight = CropU.Y;
-        float VTop = CropV.X;
-        float VBottom = CropV.Y;
-        FVertexBufferRHIRef VertexBuffer = CreateTempMediaVertexBuffer(ULeft, URight, VTop, VBottom);
-        RHICmdList.SetStreamSource(0, VertexBuffer, 0);
-
-        // set viewport to RT size
-        RHICmdList.SetViewport(0, 0, 0.0f, streamTexSize.X, streamTexSize.Y, 1.0f);
-        RHICmdList.DrawPrimitive(0, 2, 1);
-        RHICmdList.Transition(FRHITransitionInfo(BufTexture, ERHIAccess::Unknown, ERHIAccess::SRVGraphics));
-
-        RHICmdList.EndRenderPass();
-
-        RHICmdList.SubmitCommandsAndFlushGPU();
+        SCOPED_DRAW_EVENTF(RHICmdList, MediaCapture, TEXT("RS API Block"));
         FRHITexture2D* tex2d2 = BufTexture->GetTexture2D();
         auto point2 = tex2d2->GetSizeXY();
         void* resource = BufTexture->GetTexture2D()->GetNativeResource();
 
         auto toggle = FHardwareInfo::GetHardwareInfo(NAME_RHI);
-
         if (toggle == "D3D11")
         {
+            {
+                SCOPED_DRAW_EVENTF(RHICmdList, MediaCapture, TEXT("RS Flush"));
+                RHICmdList.ImmediateFlush(EImmediateFlushType::FlushRHIThreadFlushResources);
+            }
+
             RenderStreamLink::SenderFrameTypeData data = {};
             data.dx11.resource = static_cast<ID3D11Resource*>(resource);
             RenderStreamLink::instance().rs_sendFrame(Handle, RenderStreamLink::SenderFrameType::RS_FRAMETYPE_DX11_TEXTURE, data, &FrameData);
@@ -213,8 +226,6 @@ namespace RSUCHelpers
                 {
                 }
             }
-
-            cmdList->Wait(Fence, FenceValue + 2); // we have to wait here because there's only one buftexture, and we can't overwrite it on the next frame. this is horrible.
         }
         else
         {
