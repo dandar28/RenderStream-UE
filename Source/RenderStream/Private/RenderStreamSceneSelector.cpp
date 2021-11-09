@@ -365,9 +365,6 @@ void RenderStreamSceneSelector::ApplyParameters(AActor* Root, uint64_t specHash,
         { RenderStreamLink::RS_FMT_RGBA16, EPixelFormat::PF_A16B16G16R16 },
     };
 
-    static std::vector<ID3D12Fence*> s_Fences;
-    static int s_FenceValue = 1;
-
     size_t iParam = 0;
     const RenderStreamLink::RemoteParameter* params = *ppParams;
     size_t iFloat = 0;
@@ -461,20 +458,8 @@ void RenderStreamSceneSelector::ApplyParameters(AActor* Root, uint64_t specHash,
                     Texture->ResizeTarget(frameData.width, frameData.height);
                 }
 
-                if (toggle == "D3D12")
-                {
-                    while (s_Fences.size() <= iImage)
-                    {
-                        auto newFence = RSUCHelpers::CreateDX12Fence();
-                        s_Fences.push_back(newFence);
-                    }
-                }
-
-                ID3D12Fence* Fence = s_Fences[iImage];
-                int FenceValue = s_FenceValue;
-
                 ENQUEUE_RENDER_COMMAND(GetTex)(
-                [this, toggle, Texture, frameData, Fence, FenceValue, iImage](FRHICommandListImmediate& RHICmdList)
+                [this, toggle, Texture, frameData, iImage](FRHICommandListImmediate& RHICmdList)
                 {
                     SCOPED_DRAW_EVENTF(RHICmdList, MediaCapture, TEXT("RS Tex Param Block %d"), iImage);
                     auto rtResource = Texture->GetRenderTargetResource();
@@ -492,35 +477,23 @@ void RenderStreamSceneSelector::ApplyParameters(AActor* Root, uint64_t specHash,
                     }
                     else if (toggle == "D3D12")
                     {
-                        
-                        RHICmdList.EnqueueLambda([Fence, FenceValue](FRHICommandListImmediate& RHICmdList) {
-                            auto cmdQueue = RSUCHelpers::GetDX12Queue(RHICmdList);
-                            cmdQueue->Signal(Fence, FenceValue);
-                            cmdQueue->Wait(Fence, FenceValue + 1);
-                        });
-                        
                         {
                             SCOPED_DRAW_EVENTF(RHICmdList, MediaCapture, TEXT("RS Tex Param Flush"));
                             RHICmdList.ImmediateFlush(EImmediateFlushType::FlushRHIThreadFlushResources);
                         }
 
                         data.dx12.resource = static_cast<ID3D12Resource*>(resource);
-                        data.dx12.fence = Fence;
-                        data.dx12.fenceValue = FenceValue;
-
+                        
                         SCOPED_DRAW_EVENTF(RHICmdList, MediaCapture, TEXT("RS getFrameImage %d"), iImage);
-                        // this signals data.dx12.fenceValue + 1 if it succeedes
                         if (RenderStreamLink::instance().rs_getFrameImage(frameData.imageId, RenderStreamLink::SenderFrameType::RS_FRAMETYPE_DX12_TEXTURE, data) != RenderStreamLink::RS_ERROR_SUCCESS)
                         {
-                            // Signal fence ourselves if there's an error, so RHI thread doesn't deadlock
-                            Fence->Signal(data.dx12.fenceValue + 1);
+
                         }
+                        
                     }
                     else
                     {
                         UE_LOG(LogRenderStream, Error, TEXT("RenderStream tried to send frame with unsupported RHI backend."));
-                        //++iImage;
-                        //continue;
                         return;
                     }
 
@@ -546,5 +519,4 @@ void RenderStreamSceneSelector::ApplyParameters(AActor* Root, uint64_t specHash,
     *ppImageValues += iImage;
     *ppParams += iParam;
 
-    s_FenceValue = s_FenceValue + 2;
 }

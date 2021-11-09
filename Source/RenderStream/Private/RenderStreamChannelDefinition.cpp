@@ -154,7 +154,7 @@ void URenderStreamChannelDefinition::SetVisibility(AActor* Actor, bool IsVisible
 bool URenderStreamChannelDefinition::GetVisibility(AActor* Actor) const
 {
     return DefaultVisibility == EVisibilty::Visible
-        ? Hidden.Contains(Actor)
+        ? !Hidden.Contains(Actor)
         : Visible.Contains(Actor);
 }
 
@@ -330,4 +330,12 @@ void URenderStreamChannelDefinition::EndPlay(const EEndPlayReason::Type Reason)
 {
     Super::EndPlay(Reason);
     UnregisterCamera();
+}
+
+void URenderStreamChannelDefinition::AddCameraInstance(TWeakObjectPtr<ACameraActor> Camera)
+{
+    URenderStreamChannelDefinition* Definition = Camera->FindComponentByClass<URenderStreamChannelDefinition>();
+    Definition->IsInstance = true;
+    InstancedCameras.Add(Camera);
+    OnCameraInstanced.Broadcast(Camera.Get());
 }

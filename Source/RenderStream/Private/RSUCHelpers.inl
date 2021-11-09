@@ -23,7 +23,6 @@
 #include <array>
 
 class FRHITexture2D;
-class D3D12Fence;
 
 namespace {
 
@@ -125,10 +124,8 @@ namespace RSUCHelpers
         return dx12device;
     }
 
-    void SendFrame(const RenderStreamLink::StreamHandle Handle,
-        FTextureRHIRef BufTexture,
-        ID3D12Fence* Fence,
-        int FenceValue,
+    static void SendFrame(const RenderStreamLink::StreamHandle Handle,
+        FTextureRHIRef& BufTexture,
         FRHICommandListImmediate& RHICmdList,
         RenderStreamLink::CameraResponseData FrameData,
         FRHITexture2D* InSourceTexture,
@@ -202,19 +199,19 @@ namespace RSUCHelpers
         }
         else if (toggle == "D3D12")
         {
-            // Wait for previous frame's rs_sendFrame to complete.
-            FD3D12DynamicRHI* rhi12 = static_cast<FD3D12DynamicRHI*>(GDynamicRHI);
-            auto cmdList = rhi12->RHIGetD3DCommandQueue();
-            cmdList->Signal(Fence, FenceValue + 1);
+            {
+                SCOPED_DRAW_EVENTF(RHICmdList, MediaCapture, TEXT("RS Flush"));
+                RHICmdList.ImmediateFlush(EImmediateFlushType::FlushRHIThreadFlushResources);
+            }
 
             RenderStreamLink::SenderFrameTypeData data = {};
             data.dx12.resource = static_cast<ID3D12Resource*>(resource);
-            data.dx12.fence = Fence;
-            data.dx12.fenceValue = FenceValue + 1;
-            RenderStreamLink::RS_ERROR code = RenderStreamLink::instance().rs_sendFrame(Handle, RenderStreamLink::SenderFrameType::RS_FRAMETYPE_DX12_TEXTURE, data, &FrameData); // this signals data.dx12.fenceValue + 1
-            if (code != RenderStreamLink::RS_ERROR::RS_ERROR_SUCCESS)
+
             {
-                return;
+                SCOPED_DRAW_EVENTF(RHICmdList, MediaCapture, TEXT("rs_sendFrame"));
+                if (RenderStreamLink::instance().rs_sendFrame(Handle, RenderStreamLink::SenderFrameType::RS_FRAMETYPE_DX12_TEXTURE, data, &FrameData) != RenderStreamLink::RS_ERROR_SUCCESS)
+                {
+                }
             }
 
             cmdList->Wait(Fence, FenceValue + 2); // we have to wait here because there's only one buftexture, and we can't overwrite it on the next frame. this is horrible.
@@ -225,22 +222,7 @@ namespace RSUCHelpers
         }
     }
 
-    static ID3D12Fence* CreateDX12Fence()
-    {
-        auto dx12device = GetDX12Device();
-        ID3D12Fence* fence = nullptr;
-        if (dx12device->CreateFence(0, D3D12_FENCE_FLAG_SHARED, __uuidof(ID3D12Fence), reinterpret_cast<void**>(&fence)) != 0)
-        {
-            UE_LOG(LogRenderStream, Error, TEXT("Failed to create DX12 fence."));
-            RenderStreamStatus().Output("Error: Failed create a DX12 fence.", RSSTATUS_RED);
-            return nullptr;
-        }
-
-        return fence;
-    }
-
     static bool CreateStreamResources(/*InOut*/ FTextureRHIRef& BufTexture,
-        /*InOut*/ ID3D12Fence*& Fence,
         const FIntPoint& Resolution,
         RenderStreamLink::RSPixelFormat rsFormat)
     {
@@ -262,8 +244,11 @@ namespace RSUCHelpers
         auto toggle = FHardwareInfo::GetHardwareInfo(NAME_RHI);
         if (toggle == "D3D12")
         {
-            Fence = CreateDX12Fence();
-            BufTexture = RHICreateTexture2D(Resolution.X, Resolution.Y, format.ue, 1, 1, ETextureCreateFlags::TexCreate_Shared | ETextureCreateFlags::TexCreate_RenderTargetable, info);
+            ETextureCreateFlags flags = ETextureCreateFlags::TexCreate_RenderTargetable;
+            RenderStreamLink::UseDX12SharedHeapFlag rs_flag = RenderStreamLink::RS_DX12_USE_SHARED_HEAP_FLAG;
+            RenderStreamLink::instance().rs_useDX12SharedHeapFlag(&rs_flag);
+            flags = static_cast<ETextureCreateFlags>(flags | ((rs_flag == RenderStreamLink::RS_DX12_USE_SHARED_HEAP_FLAG) ? ETextureCreateFlags::TexCreate_Shared : 0));
+            BufTexture = RHICreateTexture2D(Resolution.X, Resolution.Y, format.ue, 1, 1, flags, info);
         }
         else if (toggle == "D3D11")
         {

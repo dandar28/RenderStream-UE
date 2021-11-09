@@ -175,8 +175,6 @@ public:
     typedef struct
     {
         ID3D12Resource* resource;
-        ID3D12Fence* fence;
-        int32_t fenceValue;
     } Dx12Data;
 
     typedef union
@@ -307,7 +305,7 @@ public:
 #pragma pack(pop)
 
 #define RENDER_STREAM_VERSION_MAJOR 1
-#define RENDER_STREAM_VERSION_MINOR 26
+#define RENDER_STREAM_VERSION_MINOR 27
 
     enum SenderFrameType
     {
@@ -315,6 +313,12 @@ public:
         RS_FRAMETYPE_DX11_TEXTURE,
         RS_FRAMETYPE_DX12_TEXTURE,
         RS_FRAMETYPE_UNKNOWN
+    };
+
+    enum UseDX12SharedHeapFlag
+    {
+        RS_DX12_USE_SHARED_HEAP_FLAG,
+        RS_DX12_DO_NOT_USE_SHARED_HEAP_FLAG
     };
 
     RENDERSTREAM_API static RenderStreamLink& instance();
@@ -340,6 +344,7 @@ private:
 
     typedef RS_ERROR rs_shutdownFn();
     // non-isolated functions, these require init prior to use
+    typedef RS_ERROR rs_useDX12SharedHeapFlagFn(UseDX12SharedHeapFlag* flag);
     typedef RS_ERROR rs_saveSchemaFn(const char* assetPath, Schema* schema); // Save schema for project file/custom executable at (assetPath)
     typedef RS_ERROR rs_loadSchemaFn(const char* assetPath, /*Out*/Schema* schema, /*InOut*/uint32_t* nBytes); // Load schema for project file/custom executable at (assetPath) into a buffer of size (nBytes) starting at (schema)
     // workload functions, these require the process to be running inside d3's asset launcher environment
@@ -445,6 +450,7 @@ public: // d3renderstream.h API, but loaded dynamically.
     rs_initialiseFn* rs_initialise = nullptr;
     rs_initialiseGpGpuWithDX11DeviceFn* rs_initialiseGpGpuWithDX11Device = nullptr;
     rs_initialiseGpGpuWithDX12DeviceAndQueueFn* rs_initialiseGpGpuWithDX12DeviceAndQueue = nullptr;
+    rs_useDX12SharedHeapFlagFn* rs_useDX12SharedHeapFlag = nullptr;
     rs_setSchemaFn* rs_setSchema = nullptr;
     rs_saveSchemaFn* rs_saveSchema = nullptr;
     rs_loadSchemaFn* rs_loadSchema = nullptr;
