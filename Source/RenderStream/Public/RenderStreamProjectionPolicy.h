@@ -54,6 +54,8 @@ public:
     void SendEnhancedContent_RenderThread(FRHICommandListImmediate& RHICmdList, FRHITexture2D* SrcTexture, FRHITexture2D* DepthTexture,
         FRHITexture2D* NormalsTexture, FRHITexture2D* AlbedoTexture, FRHITexture2D* DistortionTexture, const FIntRect& ViewportRect);
 
+    void SendEnvmap(RenderStreamLink::EnvmapCaptureType envmapCaptureType, void *vData, int width, int height);
+
 protected:
     FString ViewportId;
     TMap<FString, FString> Parameters;

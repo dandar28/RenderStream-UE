@@ -80,6 +80,18 @@ public:
         ALL = RENDERED_FRAME | SCENE_DEPTH | ALBEDO_AO | WORLD_NORMALS | DISTORTION
     };
 
+    enum EnvmapCaptureType
+    {
+        NONE = 0,
+        ENV_UP = 1,
+        ENV_DOWN,
+        ENV_LEFT,
+        ENV_RIGHT,
+        ENV_FRONT,
+        ENV_BACK,
+        ENV_ALL
+    };
+
     enum PredictedFrameType
     {
         OFF = 0,
@@ -116,6 +128,8 @@ public:
         float nearZ, farZ;
         float orthoWidth;  // If > 0, an orthographic camera should be used
         D3TrackingData d3Tracking;
+        int environmentFace;
+        int environmentFaceResolution;
     } CameraData;
 
     typedef struct
@@ -158,6 +172,7 @@ public:
         double tTracked;
         CameraData camera;
         EnhancedCaptureFrameType enhancedCaptureType;
+        EnvmapCaptureType envmapCaptureType;
         //PredictedFrameType predictedFrameType;
     } CameraResponseData;
 

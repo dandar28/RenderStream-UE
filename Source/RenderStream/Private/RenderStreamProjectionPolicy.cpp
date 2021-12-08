@@ -1,4 +1,5 @@
 #include "RenderStreamProjectionPolicy.h"
+#include "RSUCHelpers.inl"
 
 #include "Misc/DisplayClusterHelpers.h"
 
@@ -18,6 +19,7 @@
 #include "FrameStream.h"
 
 #include "RenderStreamChannelDefinition.h"
+#include "RenderStreamCubeCaptureComponent.h"
 
 #include "DrawDebugHelpers.h"
 
@@ -148,6 +150,22 @@ void FRenderStreamProjectionPolicy::ConfigureCapture()
 
             if (Definition)
                 Definition->AddCameraInstance(Camera);
+
+            //set up capture components
+            TArray<AActor*> allActors;
+            UGameplayStatics::GetAllActorsOfClass(Template->GetWorld(), AActor::StaticClass(), allActors);
+            for (AActor* actor : allActors)
+            {
+                UActorComponent* foundComponent = actor->GetComponentByClass(URenderStreamCubeCaptureComponent::StaticClass());
+                if (foundComponent)
+                {
+                    URenderStreamCubeCaptureComponent* captureComponent = static_cast<URenderStreamCubeCaptureComponent*>(foundComponent);
+                    if (captureComponent)
+                    {
+                        captureComponent->Init([this](RenderStreamLink::EnvmapCaptureType envmapCaptureType, void* vData, int width, int height) -> void { SendEnvmap(envmapCaptureType, vData, width, height); });
+                    }
+                }
+            }
         }
         else
             UE_LOG(LogRenderStreamPolicy, Log, TEXT("Channel '%s' currently not mapped to a camera"), *Channel);
@@ -359,6 +377,42 @@ bool FRenderStreamProjectionPolicy::GetProjectionMatrix(const uint32 ViewIdx, FM
 
     OutPrjMatrix = PrjMatrix * clippingMatrix;
     return true;
+}
+
+void FRenderStreamProjectionPolicy::SendEnvmap(RenderStreamLink::EnvmapCaptureType envmapCaptureType, void *vData, int width, int height)
+{
+    check(Stream);
+    RenderStreamLink::CameraResponseData frameResponse;
+    {
+        std::lock_guard<std::mutex> guard(m_frameResponsesLock);
+        if (m_frameResponses.empty())
+        {
+            // First frame can have no response data, so do not send a response to nothing.
+            return;
+        }
+
+        frameResponse = m_frameResponses.front();
+        m_frameResponses.pop_front();
+    }
+
+    frameResponse.envmapCaptureType = envmapCaptureType;
+    RenderStreamLink::SenderFrameType dxFrameType;
+    RenderStreamLink::SenderFrameTypeData data = {};
+
+    FString dxVer = FHardwareInfo::GetHardwareInfo(NAME_RHI);
+    
+    if (dxVer == "D3D12")
+    {
+        dxFrameType = RenderStreamLink::SenderFrameType::RS_FRAMETYPE_DX12_TEXTURE;
+        data.dx12.resource = static_cast<ID3D12Resource*>(vData);
+    }
+    else if (dxVer == "D3D11")
+    {
+         dxFrameType = RenderStreamLink::SenderFrameType::RS_FRAMETYPE_DX11_TEXTURE;
+         data.dx11.resource = static_cast<ID3D11Resource*>(vData);
+    }
+
+    RenderStreamLink::instance().rs_sendFrame(Stream->Handle(), dxFrameType, data, &frameResponse);
 }
 
 void FRenderStreamProjectionPolicy::SendEnhancedContent_RenderThread(FRHICommandListImmediate& RHICmdList, FRHITexture2D* SrcTexture, FRHITexture2D* DepthTexture,
