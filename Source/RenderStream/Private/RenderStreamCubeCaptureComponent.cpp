@@ -82,7 +82,7 @@ UE_LOG(LogTemp, Warning, TEXT("CubeComponent: %s"), *str);*/
 
                 if(m_faceTexs[i] != nullptr && m_faceTexs[i]->IsValid())
                 {
-                    void* vData = static_cast<void*>(m_faceTexs[i]->GetNativeResource());
+                void* vData = static_cast<void*>(m_faceTexs[i]->GetNativeResource());
 
                     if (vData)
                     {
@@ -92,10 +92,10 @@ UE_LOG(LogTemp, Warning, TEXT("CubeComponent: %s"), *str);*/
                         //old way of doing this
                         //if (m_stream) m_stream->SendFrameNDI_RenderingThreead(frameInfo, vData, m_width, m_height);
                     }
-                }
             }
         }
     }
+}
 }
 
 void URenderStreamCubeCaptureComponent::SignalCameraMoved(const FVector& newLocation, const FRotator& newRotation)
@@ -153,10 +153,10 @@ void URenderStreamCubeCaptureComponent::ReadPixels(TSharedPtr<FRenderRequest> Re
 
             if (RHICmdList.IsOutsideRenderPass())
             {
-                FRHICopyTextureInfo copyInfo;
-                copyInfo.Size.X = RenderRequest->ImageWidth;
-                copyInfo.Size.Y = RenderRequest->ImageHeight;
-                copyInfo.SourceSliceIndex = RenderRequest->FaceNumber;
+            FRHICopyTextureInfo copyInfo;
+            copyInfo.Size.X = RenderRequest->ImageWidth;
+            copyInfo.Size.Y = RenderRequest->ImageHeight;
+            copyInfo.SourceSliceIndex = RenderRequest->FaceNumber;
 
                 RHICmdList.CopyTexture(
                     RenderRequest->RenderCommandContext.SrcRenderTarget->GetTextureRHI(),
@@ -204,7 +204,13 @@ void URenderStreamCubeCaptureComponent::ReadPixels(TSharedPtr<FRenderRequest> Re
             //FUpdateTextureRegion2D updateRegion = FUpdateTextureRegion2D(0, 0, 0, 0, RenderRequest->ImageWidth, RenderRequest->ImageHeight);
 
             //RHIUpdateTexture2D(RenderRequest->RenderCommandContext.OutTex->GetTexture2D(), 0, updateRegion, RenderRequest->ImageWidth * 4, (uint8*)(&RenderRequest->RenderCommandContext.OutData));
-            
+                
+                int32 outWidth, outHeight;
+                RHICmdList.MapStagingSurface(RenderRequest->RenderCommandContext.OutTex, RenderRequest->RawImageData, outWidth, outHeight);
+                RenderRequest->RenderCommandContext.OutData->Init(FColor(0, 0, 0, 0), outWidth * outHeight);
+                FMemory::Memcpy(RenderRequest->RenderCommandContext.OutData->GetData(), RenderRequest->RawImageData, outWidth * outHeight * bpp);
+                RHICmdList.UnmapStagingSurface(RenderRequest->RenderCommandContext.OutTex);
+            }
         });
 
     RenderRequest->RenderFence.BeginFence();

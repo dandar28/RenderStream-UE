@@ -97,6 +97,18 @@ public:
         ENV_SPHERE
     };
 
+    enum EnvmapCaptureType
+    {
+        NONE = 0,
+        ENV_UP = 1,
+        ENV_DOWN,
+        ENV_LEFT,
+        ENV_RIGHT,
+        ENV_FRONT,
+        ENV_BACK,
+        ENV_ALL
+    };
+
     enum PredictedFrameType
     {
         OFF = 0,
