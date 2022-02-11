@@ -14,6 +14,9 @@ struct ID3D12Fence;
 
 #define RS_PLUGIN_NAME "RenderStream-UE"
 
+//lukes config 
+// -game -dc_cluster -verbose -unattended -fixedseed -NOSCREENMESSAGES -nohmd -RenderOffScreen -messaging -UDPMESSAGING_TRANSPORT_UNICAST=192.168.56.1:0 -ini:Engine:[/Script/Engine.Engine]:GameEngine=/Script/DisplayCluster.DisplayClusterGameEngine,[/Script/Engine.Engine]:UnrealEdEngine=/Script/DisplayClusterEditor.DisplayClusterEditorEngine,[/Script/Engine.Engine]:GameViewportClientClassName=/Script/RenderStream.RenderStreamViewportClient -dx12 -dc_dev_mono -forceres -windowed WinX=0 WinY=0 ResX=1920 ResY=1080 dc_node=node_0 Log=\"node_0.log\" ","payload": "{\n\"value0\": {\n\"v\": 2,\n\"configFilename\": \"ndisplay_5413667146678939634.ndisplay\",\n\"transportType\": \"Compressed\",\n\"transportFormat\": \"RGB 4:4:4\",\n\"transportBitDepth\": \"8 bit\",\n\"alphaEnabled\": \"false\",\n\"depthEnabled\": \"false\",\n\"albedoEnabled\": \"false\",\n\"normalsEnabled\": \"false\",\n\"distortionEnabled\": \"false\",\n\"ndisplayConfig\": \"{\\n    \\\"nDisplay\\\": {\\n        \\\"description\\\": \\\"nDisplay configuration\\\",\\n        \\\"version\\\": \\\"23\\\",\\n        \\\"scene\\\": {\\n            \\\"cameras\\\": {\\n                \\\"camera_static\\\": {\\n                    \\\"interpupillaryDistance\\\": 0.06400000303983689,\\n                    \\\"swapEyes\\\": false,\\n                    \\\"stereoOffset\\\": \\\"none\\\",\\n                    \\\"parent\\\": \\\"\\\",\\n                    \\\"trackerId\\\": \\\"\\\",\\n                    \\\"trackerChannel\\\": -1,\\n                    \\\"location\\\": {\\n                        \\\"x\\\": 0,\\n                        \\\"y\\\": 0,\\n                        \\\"z\\\": 0\\n                    },\\n                    \\\"rotation\\\": {\\n                        \\\"pitch\\\": 0,\\n                        \\\"yaw\\\": 0,\\n                        \\\"roll\\\": 0\\n                    }\\n                }\\n            }\\n        },\\n        \\\"cluster\\\": {\\n            \\\"sync\\\": {\\n                \\\"renderSyncPolicy\\\": {\\n                    \\\"type\\\": \\\"None\\\"\\n                },\\n                \\\"inputSyncPolicy\\\": {\\n                    \\\"type\\\": \\\"ReplicateMaster\\\"\\n                }\\n            },\\n            \\\"network\\\": {\\n                \\\"ConnectRetriesAmount\\\": \\\"10\\\",\\n                \\\"ConnectRetryDelay\\\": \\\"1000\\\",\\n                \\\"GameStartBarrierTimeout\\\": \\\"43200000\\\",\\n                \\\"FrameStartBarrierTimeout\\\": \\\"10000\\\",\\n                \\\"FrameEndBarrierTimeout\\\": \\\"10000\\\",\\n                \\\"RenderSyncBarrierTimeout\\\": \\\"10000\\\"\\n            },\\n            \\\"masterNode\\\": {\\n                \\\"id\\\": \\\"node_0\\\",\\n                \\\"ports\\\": {\\n                    \\\"ClusterSync\\\": 15000,\\n                    \\\"RenderSync\\\": 15001,\\n                    \\\"ClusterEventsJson\\\": 15002,\\n                    \\\"ClusterEventsBinary\\\": 15003\\n                }\\n            },\\n            \\\"nodes\\\": {\\n                \\\"node_0\\\": {\\n                    \\\"host\\\": \\\"192.168.56.1\\\",\\n                    \\\"sound\\\": true,\\n                    \\\"fullScreen\\\": false,\\n                    \\\"viewports\\\": {\\n                        \\\"stream 0\\\": {\\n                            \\\"camera\\\": \\\"\\\",\\n                            \\\"bufferRatio\\\": 1,\\n                            \\\"gPUIndex\\\": -1,\\n                            \\\"allowCrossGPUTransfer\\\": true,\\n                            \\\"isShared\\\": false,\\n                            \\\"region\\\": {\\n                                \\\"x\\\": 0,\\n                                \\\"y\\\": 0,\\n                                \\\"w\\\": 1920,\\n                                \\\"h\\\": 1080\\n                            },\\n                            \\\"projectionPolicy\\\": {\\n                                \\\"type\\\": \\\"renderstream\\\"\\n                            }\\n                        }\\n                    },\\n                    \\\"window\\\": {\\n                        \\\"x\\\": 0,\\n                        \\\"y\\\": 0,\\n                        \\\"w\\\": 1920,\\n                        \\\"h\\\": 1080\\n                    }\\n                }\\n            }\\n        },\\n        \\\"diagnostics\\\": {\\n            \\\"simulateLag\\\": false,\\n            \\\"minLagTime\\\": 0,\\n            \\\"maxLagTime\\\": 0.5\\n        }\\n    }\\n}\"\n}\n}","checkRivermax" : false
+
 class RenderStreamLink
 {
 public:
@@ -77,7 +80,21 @@ public:
         ALBEDO_AO = 4,
         WORLD_NORMALS = 8,
         DISTORTION = 16,
-        ALL = RENDERED_FRAME | SCENE_DEPTH | ALBEDO_AO | WORLD_NORMALS | DISTORTION
+        ENVMAP = 32,
+        ALL = RENDERED_FRAME | SCENE_DEPTH | ALBEDO_AO | WORLD_NORMALS | DISTORTION | ENVMAP
+    };
+
+    enum EnvmapCaptureType
+    {
+        NONE = 0,
+        ENV_UP = 1,
+        ENV_DOWN,
+        ENV_LEFT,
+        ENV_RIGHT,
+        ENV_FRONT,
+        ENV_BACK,
+        ENV_ALL,
+        ENV_SPHERE
     };
 
     enum PredictedFrameType
@@ -116,6 +133,8 @@ public:
         float nearZ, farZ;
         float orthoWidth;  // If > 0, an orthographic camera should be used
         D3TrackingData d3Tracking;
+        int environmentFace;
+        int environmentFaceResolution;
     } CameraData;
 
     typedef struct
@@ -158,6 +177,7 @@ public:
         double tTracked;
         CameraData camera;
         EnhancedCaptureFrameType enhancedCaptureType;
+        EnvmapCaptureType envmapCaptureType;
         //PredictedFrameType predictedFrameType;
     } CameraResponseData;
 

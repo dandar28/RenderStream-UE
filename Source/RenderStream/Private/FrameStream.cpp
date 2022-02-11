@@ -10,6 +10,8 @@ FFrameStream::FFrameStream()
     {
         m_bufTextures.Add(nullptr);
     }
+
+    EnvmapTexture = nullptr;
 }
 
 FFrameStream::~FFrameStream()

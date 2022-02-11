@@ -26,11 +26,14 @@ public:
     FIntPoint Resolution() const { return m_resolution; }
     RenderStreamLink::StreamHandle Handle() const { return m_handle; }
 
+    FTextureRHIRef EnvmapTexture;
+
 private:
     FString m_streamName;
     FString m_channel;
     RenderStreamLink::ProjectionClipping m_clipping;
     TArray<FTextureRHIRef> m_bufTextures;
+
     FIntPoint m_resolution;
     RenderStreamLink::StreamHandle m_handle;
 };
