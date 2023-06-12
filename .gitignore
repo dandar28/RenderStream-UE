@@ -3,6 +3,7 @@ Intermediate/
 Packaged/
 Content/Cache/
 .vs/
-RenderStream-UE.uplugin
+*/**/RenderStream-UE.uplugin
+!./RenderStream-UE.uplugin
 disguiseuerenderstream.uplugin
 local_env.json
